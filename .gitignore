@@ -1,3 +1,5 @@
 .venv
-teste_visualize.py
-
+analysis/__pycache__
+analysis/scenarios/__pycache__
+analysis/simulations/__pycache__
+src/__pycache__

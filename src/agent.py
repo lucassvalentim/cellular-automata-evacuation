@@ -3,20 +3,22 @@ import numpy as np
 from typing import Tuple, Set
 
 class PedestrianAgent:
-    """
-    Representa o indivíduo e encapsula a tomada de decisão probabilística 
-    de movimento com base na matriz do Campo de Piso.
-    """
-    def __init__(self, agent_id: int, start_pos: Tuple[int, int], p_wait: float = 0.5):
+    def __init__(self, agent_id: int, start_pos: Tuple[int, int], p_wait: float = 0.5, p_panic: float = 0.0):
         self.agent_id = agent_id
         self.pos = start_pos
         self.p_wait = p_wait
+        self.p_panic = p_panic
 
     def choose_intent(self, floor_field: np.ndarray, other_occupied: Set[Tuple[int, int]], walls: Set[Tuple[int, int]]) -> Tuple[int, int]:
         r, c = self.pos
-        rows, cols = floor_field.shape
         
+        # Avaliação estocástica do estado de pânico
+        if random.random() < self.p_panic:
+            return (r, c) # Indivíduo paralisado no passo atual
+            
+        rows, cols = floor_field.shape
         neighbors = []
+        
         for dr in [-1, 0, 1]:
             for dc in [-1, 0, 1]:
                 nr, nc = r + dr, c + dc
@@ -32,7 +34,6 @@ class PedestrianAgent:
         if best_cell not in other_occupied or best_cell == self.pos:
             return best_cell
             
-        # Fusão lógica [Varas vs Carneiro]: Se estiver ocupada, escolhe via probabilidade
         if random.random() < self.p_wait:
             return (r, c)
         else:
