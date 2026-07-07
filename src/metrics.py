@@ -108,12 +108,14 @@ class MetricsCollector:
         shape : Tuple[int, int], 
         exits_dict: Dict[str, List[Tuple[int, int]]], 
         walls: List[Tuple[int, int]],
-        p_wait: float = 0.5
+        p_wait: float = 0.5,
+        p_panic: float = 0.0
     ):
         self.exits = exits_dict
         self.shape = shape
         self.walls = walls
         self.p_wait = p_wait
+        self.p_panic = p_panic
         self.history = []
         self.density_map = np.zeros(shape, dtype=int)
         
@@ -126,7 +128,7 @@ class MetricsCollector:
         ff = FloorFieldGenerator.generate(self.shape, self.exits, self.walls)
         
         for _ in range(num_simulations):
-            engine = SimulationEngine(ff, self.exits, self.walls, self.p_wait)
+            engine = SimulationEngine(ff, self.exits, self.walls, self.p_wait, self.p_panic)
             
             if type_populate == 'populate_randomly':
                 engine.populate_randomly(num_agents)
@@ -164,13 +166,9 @@ class MetricsCollector:
         series.to_csv(f'{path}', index=False)
     
     def save_density(self, ff, path):
-        if not self.density:
-            print("Nenhum dado coletado.")
-            return
-        
         VisualizeMetrics.plot_density_heatmap(
             density_map=self.density, 
             floor_field=ff, 
-            title="Distribuição Espacial de Congestionamento (Pânico: 30%)",
+            title=f"Distribuição Espacial de Congestionamento (Pânico: {self.p_wait}%)",
             output_path=path
         )
