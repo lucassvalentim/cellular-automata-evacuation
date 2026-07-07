@@ -6,6 +6,7 @@ from typing import Tuple, List, Dict
 
 from src.floor_field import FloorFieldGenerator
 from src.engine import SimulationEngine
+from src.visualize_metrics import VisualizeMetrics
 
 class ScenarioManager:
     """
@@ -103,12 +104,21 @@ class MetricsCollector:
     """
     Executa baterias repetidas de testes em lote para extrair consistência estatística.
     """
-    def __init__(self, shape, exits, walls, p_wait=0.5):
+    def __init__(self, 
+        shape : Tuple[int, int], 
+        exits_dict: Dict[str, List[Tuple[int, int]]], 
+        walls: List[Tuple[int, int]],
+        p_wait: float = 0.5
+    ):
+        self.exits = exits_dict
         self.shape = shape
-        self.exits = exits
         self.walls = walls
         self.p_wait = p_wait
         self.history = []
+        self.density_map = np.zeros(shape, dtype=int)
+        
+        # A eficiência agora é rastreada pelo NOME da porta, não pela célula
+        self.exit_efficiency = {exit_name: 0 for exit_name in exits_dict.keys()}
 
     def run_batch(self, num_agents: int, num_simulations: int, type_populate='populate_randomly'):
         self.history = []
@@ -123,7 +133,8 @@ class MetricsCollector:
             elif type_populate == 'populate_exits':
                 engine.populate_exits()
 
-            steps = engine.simulate()
+            steps, self.density, self.exit_efficiency  = engine.simulate()
+            
             self.history.append(steps)
 
     def get_history(self):
@@ -131,21 +142,35 @@ class MetricsCollector:
             return None
 
         return self.history
+
+    def get_density(self):
+        if not self.density:
+            return None
+
+        return self.density
+    
+    def get_exit_efficiency(self):
+        if not self.exit_efficiency:
+            return None
+
+        return self.exit_efficiency
             
-    def report(self, cenario):
+    def save_history(self, path):
         if not self.history:
             print("Nenhum dado coletado.")
             return
-
+        
         series = pd.Series(self.history)
-        print("\n" + "="*45)
-        print("        RELATÓRIO ESTATÍSTICO DE EVACUAÇÃO       ")
-        print("="*45)
-        print(f"Média Geral (Passos):    {series.mean():.2f}")
-        print(f"Desvio Padrão (s):       {series.std():.2f}")
-        print(f"Mediana (Xm):            {series.median():.2f}")
-        print(f"Moda (Mo):               {series.mode().iloc[0]:.2f}")
-        print(f"Tempo Mínimo Registrado: {series.min()} passos")
-        print(f"Tempo Máximo Registrado: {series.max()} passos")
-        print("="*45)
-        series.to_csv(f'outputs/history_{cenario}.csv', index=False)
+        series.to_csv(f'{path}', index=False)
+    
+    def save_density(self, ff, path):
+        if not self.density:
+            print("Nenhum dado coletado.")
+            return
+        
+        VisualizeMetrics.plot_density_heatmap(
+            density_map=self.density, 
+            floor_field=ff, 
+            title="Distribuição Espacial de Congestionamento (Pânico: 30%)",
+            output_path=path
+        )
